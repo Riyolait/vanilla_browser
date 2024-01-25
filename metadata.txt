@@ -12,8 +12,8 @@ email=matthieu.serek@bpm-conseil.com
 
 about=Uses Vanilla API to browse through data
 
-tracker=http://bugs
-repository=http://repo
+tracker=https://github.com/Riyolait/vanilla_browser
+repository=https://github.com/Riyolait/vanilla_browser
 # End of mandatory metadata
 
 # Recommended items:
