@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/plugins/vanilla_browser" >
+        <file>icon.png</file>
+    </qresource>
+</RCC>
