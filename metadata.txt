@@ -6,14 +6,14 @@
 name=Vanilla Browser
 qgisMinimumVersion=3.0
 description=Browser for Vanilla (uses Vanilla API)
-version=1.0
+version=1.6
 author=MSE @ BPM-Conseil
 email=matthieu.serek@bpm-conseil.com
 
 about=Uses Vanilla API to browse through data
 
-tracker=https://github.com/Riyolait/vanilla_browser
-repository=https://github.com/Riyolait/vanilla_browser
+tracker=https://gitlab.bpm-conseil.com/data4citizen/qgis-vanilla
+repository=https://gitlab.bpm-conseil.com/data4citizen/qgis-vanilla
 # End of mandatory metadata
 
 # Recommended items:
