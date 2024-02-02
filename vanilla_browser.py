@@ -1329,7 +1329,7 @@ class VanillaBrowser:
         file = QgsProject.instance().mapLayersByName(self.uiLayers.list_layers.currentItem().text())[0]
         file_path = file.dataProvider().dataSourceUri().split('|')[0]
 
-        if file_path.startswith('memory?'):
+        if file_path.startswith('memory?') or file_path.startswith('dbname='):
             # Si la couche est chargée en mémoire, l'enregistrer dans resources au format geojson
         
             try: 
@@ -1377,7 +1377,7 @@ class VanillaBrowser:
         # Initialiser l'application QGIS
         QgsApplication.processingRegistry().addProvider(QgsNativeAlgorithms())
         Processing.initialize()
-        if layer.type() == QgsMapLayer.VectorLayer and layer.dataProvider().name() == 'memory':
+        if layer.type() == QgsMapLayer.VectorLayer and (layer.dataProvider().name() == 'memory' or layer.dataProvider().name() == 'postgres'):
             # We do not manage sanitized name colision (if your
             # layer name is the same, code will try to write to
             # a GPKG with the same name and the same layer...)
