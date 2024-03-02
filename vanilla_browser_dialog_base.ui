@@ -409,19 +409,6 @@
       <string>Afficher les queries</string>
      </property>
     </widget>
-    <widget class="QPushButton" name="push_createQuery">
-     <property name="geometry">
-      <rect>
-       <x>140</x>
-       <y>250</y>
-       <width>111</width>
-       <height>23</height>
-      </rect>
-     </property>
-     <property name="text">
-      <string>Créer une query</string>
-     </property>
-    </widget>
     <widget class="QCheckBox" name="check_previsu">
      <property name="geometry">
       <rect>

@@ -246,7 +246,7 @@ class VanillaBrowser:
             self.dlg.combo_lon.setHidden(True)
             self.dlg.combo_NColumn.setEnabled(False)
             self.dlg.combo_lat.setEnabled(False)
-            self.dlg.push_createQuery.setHidden(True)
+            # self.dlg.push_createQuery.setHidden(True)
             self.dlg.check_centroide.setHidden(True)
 
             self.dlg.pushLogins.clicked.connect(self.connect_to_vanilla)
@@ -330,6 +330,21 @@ class VanillaBrowser:
 
     def getVanillaLogins(self, url, login, password):
         
+        # reset everything before
+        self.dlg.comboBox_repository.clear()
+        self.dlg.comboBox_group.clear()
+        self.dlg.comboBox_metadata.clear()
+        self.dlg.comboBox_model.clear()
+        self.dlg.comboBox_package.clear()
+        self.dlg.list_tables.clear()
+        self.dlg.list_columns.clear()
+        self.dlg.combo_lat.clear()
+        self.dlg.combo_lon.clear()
+        self.dlg.list_contracts.clear()
+        self.get_contactInfo(isReset=True)
+
+
+
         vanilla_url = url + '/api/1.0/repositories'
 
         try:
@@ -719,6 +734,8 @@ class VanillaBrowser:
             if response.status_code == 200:
                 response_json = response.json()
                 if response_json['status'] == 'success':
+                    if type(response_json['result']) is dict:
+                        return
                     self.dlg.list_columns.clear()
                     for column in response_json['result']['columns']:
                         self.dlg.list_columns.addItem(column)
@@ -730,7 +747,7 @@ class VanillaBrowser:
             else:
                 self.show_error_message(self.tr('Erreur de connexion'))
         except Exception as e:
-            self.show_error_message(self.tr('Erreur de connexion') + str(e))
+            self.show_error_message(self.tr('Erreur de connexion1') + str(e))
             
     def get_tables(self):
 
@@ -975,12 +992,12 @@ class VanillaBrowser:
             self.dlg.push_DisplayQueries.setText('Afficher les queries')
             self.dlg.label_queries.setText('Tables :')
             self.get_tables()
-            self.dlg.push_createQuery.setHidden(True)
+            # self.dlg.push_createQuery.setHidden(True)
         else:
             self.dlg.push_DisplayQueries.setText('Afficher les tables')
             self.dlg.label_queries.setText('Queries :')
             self.get_queries()
-            self.dlg.push_createQuery.setHidden(False)
+            # self.dlg.push_createQuery.setHidden(False)
 
     def get_contracts(self):
         
@@ -1011,8 +1028,16 @@ class VanillaBrowser:
             self.dlg.list_contracts.clear()
             self.dlg.list_contracts.addItem('Erreur de connexion')
 
-    def get_contactInfo(self):
-
+    def get_contactInfo(self, isReset = False):
+        if isReset:
+            self.dlg.label_contractCreationDate.setText('Date de création : ')
+            self.dlg.label_contractReferent.setText('Fournisseur : ')
+            self.dlg.label_contractRepo.setText('Dossier : ')
+            self.dlg.label_fileName.setText('Fichier : ')
+            self.dlg.label_fileVersion.setText('Version : ')
+            self.dlg.label_fileLastModif.setText('Dernière modification : ')
+            self.dlg.label_fileFormat.setText('Format : ')
+            return
         contractIndex = self.getContractIndex()
         contract = self.allContracts[contractIndex]
         self.dlg.label_contractCreationDate.setText('Date de création : ' + self.formatDate(contract['creationDate']))
@@ -1317,24 +1342,39 @@ class VanillaBrowser:
         # Afficher les couches Qgis en cours dans le list widget 
         layers = QgsProject.instance().mapLayers().values()
         for layer in layers:
-            self.uiLayers.list_layers.addItem(layer.name())
-
+            # N'afficher que les couches du même type que le fichier à exporter
+            # get layer format (csv, geo or anything else)
+            layer_format = layer.dataProvider().dataSourceUri().split('|')[0].split('.')[-1]
+            print(layer_format)
+            contract_type = self.allContracts[self.getContractIndex()]['fileVersions']['lastVersion']['format']
+            if layer_format == contract_type:
+                self.uiLayers.list_layers.addItem(layer.name())
+            if not layer.dataProvider().dataSourceUri().split('|')[0].startswith('C:'):
+                self.uiLayers.list_layers.addItem(layer.name())
         self.uiLayers.push_confirm.clicked.connect(self.exportInArchitect)
         self.uiLayers.push_cancel.clicked.connect(self.windowLayers.close)
 
         self.windowLayers.exec_()
 
     def exportInArchitect(self):
-        
+        contract_type = self.allContracts[self.getContractIndex()]['fileVersions']['lastVersion']['format']
         file = QgsProject.instance().mapLayersByName(self.uiLayers.list_layers.currentItem().text())[0]
         file_path = file.dataProvider().dataSourceUri().split('|')[0]
 
-        if file_path.startswith('memory?') or file_path.startswith('dbname='):
+        if not(file_path.startswith('C:')):
             # Si la couche est chargée en mémoire, l'enregistrer dans resources au format geojson
         
             try: 
-                file_path = self.plugin_dir + '/resources/' + file.name().replace('.csv', '') + '.geojson'
-                self.save_layer_as_geojson(file, file_path)
+                file_path = self.plugin_dir + '/resources/' + file.name().replace('.csv', '')
+                if contract_type == 'geojson':
+                    file_path += '.geojson'
+                    self.save_layer_as_geojson(file, file_path)
+                elif contract_type == 'csv':
+                    file_path += '.csv'
+                    self.save_layer_as_geojson(file, file_path)
+                else:
+                    file_path += '.' + contract_type
+                    self.save_layer_as_geojson(file, file_path)
             except Exception as e:
                 self.show_error_message(self.tr('Erreur lors de la sauvegarde de la couche, veuillez l\'enregistrer sur le disque.'), e)
                 return
@@ -1372,26 +1412,28 @@ class VanillaBrowser:
 
     def save_layer_as_geojson(self, layer, output_geojson_path):
        
+        try:
+            project = QgsProject.instance()
+            # Initialiser l'application QGIS
+            QgsApplication.processingRegistry().addProvider(QgsNativeAlgorithms())
+            Processing.initialize()
+            if layer.type() == QgsMapLayer.VectorLayer and (not layer.dataProvider().dataSourceUri().split('|')[0].startswith('C:')):
+                # We do not manage sanitized name colision (if your
+                # layer name is the same, code will try to write to
+                # a GPKG with the same name and the same layer...)
+                out = Processing.runAlgorithm("native:savefeatures", {
+                    'INPUT': layer,
+                    'OUTPUT': output_geojson_path,
+                    'LAYER_NAME':'',
+                    'DATASOURCE_OPTIONS':'',
+                    'LAYER_OPTIONS':''}
+                )
+                layer.setDataSource(f"{out['OUTPUT']}", layer.name(), 'ogr')
+            project.write()
+            
+        except Exception as e:
+            self.show_error_message(self.tr('Erreur lors de la sauvegarde de la couche') + str(e))
 
-        project = QgsProject.instance()
-        # Initialiser l'application QGIS
-        QgsApplication.processingRegistry().addProvider(QgsNativeAlgorithms())
-        Processing.initialize()
-        if layer.type() == QgsMapLayer.VectorLayer and (layer.dataProvider().name() == 'memory' or layer.dataProvider().name() == 'postgres'):
-            # We do not manage sanitized name colision (if your
-            # layer name is the same, code will try to write to
-            # a GPKG with the same name and the same layer...)
-            layer_name = layer.name().lower().replace(' ', '_')
-            layer_name = layer_name.replace('.csv', '')
-            out = Processing.runAlgorithm("native:savefeatures", {
-                'INPUT': layer,
-                'OUTPUT': output_geojson_path,
-                'LAYER_NAME':'',
-                'DATASOURCE_OPTIONS':'',
-                'LAYER_OPTIONS':''}
-            )
-            layer.setDataSource(f"{out['OUTPUT']}", layer.name(), 'ogr')
-        project.write()
        
 
     def setupTools(self):
@@ -1997,7 +2039,7 @@ class VanillaBrowser:
             file = QgsProject.instance().mapLayersByName(self.uiCreateContract.combo_selectedLayer.currentText())[0]
             file_path = file.dataProvider().dataSourceUri().split('|')[0]
             file_format = self.get_layer_format(file)
-            if file_format == 'Memory Layer':
+            if file_format == 'Memory Layer' or file_format == 'PostgreSQL':
                 try: 
                     file_path = self.plugin_dir + '/resources/' + file.name().replace('.csv', '') + '.geojson'
                     self.save_layer_as_geojson(file, file_path)
@@ -2041,6 +2083,8 @@ class VanillaBrowser:
                 return provider_format
             elif provider_type == 'memory':
                 return 'Memory Layer'
+            elif provider_type == 'postgres':
+                return 'PostgreSQL'
             else:
                 return 'Autre'
 

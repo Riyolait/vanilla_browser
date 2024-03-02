@@ -6,7 +6,7 @@
 name=Vanilla Browser
 qgisMinimumVersion=3.0
 description=Browser for Vanilla (uses Vanilla API)
-version=1.6
+version=1.7
 author=MSE @ BPM-Conseil
 email=matthieu.serek@bpm-conseil.com
 
